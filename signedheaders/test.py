@@ -3,18 +3,19 @@ from signedheaders import add_signed_header, HeaderSignatureCheckingMiddleware
 
 def test_header_signing():
     environ = {'morx' : 'fleem'}
-    add_signed_header(environ, 'X-Openplans-User', 'ausername', 'secret')
+    add_signed_header(environ, 'REMOTE_USER', 'ausername', 'secret')
     assert environ['morx'] == 'fleem'
-    assert 'HTTP_X_OPENPLANS_USER' in environ
-    header = environ['HTTP_X_OPENPLANS_USER']
-    value, sendtime, nonce, authenticator = header.decode("base64").split("\0")
+    assert 'HTTP_REMOTE_USER_SIGNED' in environ
+    header = environ['HTTP_REMOTE_USER_SIGNED']
+    sendtime, nonce, key, authenticator, value = header.split(" ", 5)
     assert value == 'ausername'
-    
-    app = lambda environ, start_response: [environ.get('HTTP_X_OPENPLANS_USER', 'no user')]
+    assert key == 'REMOTE_USER'
+
+    app = lambda environ, start_response: [environ.get('REMOTE_USER', 'no user')]
     middleware = HeaderSignatureCheckingMiddleware(app, 'secret')
     assert middleware(environ, None) == ['ausername']
 
     #now check a bad signature
-    badval = "\0".join(['ausername', sendtime, nonce, "a bad authenticator"])
-    environ['HTTP_X_OPENPLANS_USER'] = badval.encode("base64").strip()
+    badval = " ".join([sendtime, nonce, 'REMOTE_USER', "abadauthenticator", 'ausername'])
+    environ['HTTP_REMOTE_USER_SIGNED'] = badval
     assert middleware(environ, None) != ['ausername']

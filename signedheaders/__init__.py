@@ -2,6 +2,41 @@ import sha
 import hmac
 import time
 import os
+import re
+
+from warnings import warn
+
+def _add_warning(environ, warning):
+    #quote warning
+    warning = warning.replace("\\", "\\\\")
+    warning = warning.replace('\"', '\\"')
+    header = '299 HeaderSignatureCheckingMiddleware "%s"' % warning
+    if 'HTTP_WARNING' in environ:
+        environ['HTTP_WARNING'] += ',' + header
+    else:
+        environ['HTTP_WARNING'] = header
+
+def check_environ_signatures(environ, secret):
+    for k, v in environ.items():
+        #if it's signed
+        if k.endswith("_SIGNED"):
+            del environ[k]
+            decoded = v.split(" ", 5)
+            sendtime, nonce, key, authenticator, value = decoded
+            if time.time() - int(sendtime) > 60:
+                #the message has expired
+                _add_warning(environ, "expired header")
+                warn("expired header in %s: %s" % (k, v))
+                continue
+
+            message = "\0".join([sendtime, nonce, key, value])
+            hash = hmac.new(secret, message, sha).hexdigest()
+            if hash != authenticator:
+                #the hash is bad
+                _add_warning(environ, "bad authenticator")
+                warn("bad authenticator in %s: %s" % (k, v))
+                continue
+            environ[key] = value
 
 
 class HeaderSignatureCheckingMiddleware:
@@ -17,39 +52,22 @@ class HeaderSignatureCheckingMiddleware:
         self.secret = secret
 
     def __call__(self, environ, start_response):
-        new_environ = dict()
-        for k, v in environ.items():
-            if k.startswith("HTTP_X_OPENPLANS"):
-
-                decoded = v.decode("base64").split("\0")
-                value, sendtime, nonce, authenticator = decoded
-                sendtime = int(sendtime)
-                if time.time() - sendtime > 60:
-                    #the message has expired
-                    continue
-
-                message = "%s\0%s\0%s" % (value, sendtime, nonce)
-                hash = hmac.new(self.secret, message, sha).hexdigest()
-                if hash != authenticator:
-                    #the hash is bad
-                    continue
-
-                new_environ[k] = value
-            else:
-                new_environ[k] = v
-
+        new_environ = dict(environ)
+        check_environ_signatures(new_environ, self.secret)
         return self.app(new_environ, start_response)
 
 
 def add_signed_header(environ, header, value, secret):
     """This adds a new signed HTTP header to a WSGI environment.
     The header is signed with a secret."""
-    munged_header = "HTTP_" + header.replace("-", "_").upper()
+    assert " " not in header
+    munged_header = "HTTP_" + header.replace("-", "_").upper() + "_SIGNED"
     sendtime = str(int(time.time()))
-    nonce = os.urandom(16)
-    authenticator = hmac.new(secret, "%s\0%s\0%s" % (value, sendtime, nonce), sha).hexdigest()
-    signed_value = "\0".join([value, sendtime, nonce, authenticator])
-    environ[munged_header] = signed_value.encode("base64").strip()
+    nonce = os.urandom(18).encode("base64").strip()
+    message = "\0".join ([sendtime, nonce, header, value])
+    authenticator = hmac.new(secret, message, sha).hexdigest()
+    signed_value = " ".join([sendtime, nonce, header, authenticator, value])
+    environ[munged_header] = signed_value
 
 
 class SignedHeaderAdder:
