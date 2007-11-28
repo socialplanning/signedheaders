@@ -4,7 +4,7 @@ import time
 import os
 import re
 
-from warnings import warn
+from logging import warning
 
 def _add_warning(environ, warning):
     #quote warning
@@ -26,7 +26,7 @@ def check_environ_signatures(environ, secret):
             if time.time() - int(sendtime) > 60:
                 #the message has expired
                 _add_warning(environ, "expired header")
-                warn("expired header in %s: %s" % (k, v))
+                warning("expired header in %s: %s" % (k, v))
                 continue
 
             message = "\0".join([sendtime, nonce, key, value])
@@ -34,7 +34,7 @@ def check_environ_signatures(environ, secret):
             if hash != authenticator:
                 #the hash is bad
                 _add_warning(environ, "bad authenticator")
-                warn("bad authenticator in %s: %s" % (k, v))
+                warning("bad authenticator in %s: %s" % (k, v))
                 continue
             environ[key] = value
 
