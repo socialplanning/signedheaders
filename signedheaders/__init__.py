@@ -59,17 +59,17 @@ class HeaderSignatureCheckingMiddleware:
         return self.app(new_environ, start_response)
 
 
-def add_signed_header(environ, header, value, secret):
+def add_signed_header(environ, key, value, secret):
     """This adds a new signed HTTP header to a WSGI environment.
     The header is signed with a secret."""
-    assert " " not in header
-    munged_header = "HTTP_" + header.replace("-", "_").upper() + "_SIGNED"
+    assert " " not in key
+    header = "HTTP_" + key.replace("-", "_").upper() + "_SIGNED"
     sendtime = str(int(time.time()))
     nonce = os.urandom(18).encode("base64").strip()
-    message = "\0".join ([sendtime, nonce, header, value])
+    message = "\0".join ([sendtime, nonce, key, value])
     authenticator = hmac.new(secret, message, sha).hexdigest()
-    signed_value = " ".join([sendtime, nonce, header, authenticator, value])
-    environ[munged_header] = signed_value
+    signed_value = " ".join([sendtime, nonce, key, authenticator, value])
+    environ[header] = signed_value
 
 
 class SignedHeaderAdder:
