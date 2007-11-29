@@ -17,6 +17,12 @@ def _add_warning(environ, warning):
         environ['HTTP_WARNING'] = header
 
 def check_environ_signatures(environ, secret):
+    """
+    This function searches the environment for HTTP headers which end
+    with _SIGNED.  If those headers are not signed with the secret (or
+    the signature is bad), they are removed.  If they are signed, the
+    signature is stripped, leaving the bare value.
+    """
     for k, v in environ.items():
         #if it's signed
         if k.endswith("_SIGNED"):
@@ -41,11 +47,7 @@ def check_environ_signatures(environ, secret):
 
 class HeaderSignatureCheckingMiddleware:
     """
-    This middleware searches the environment for headers which
-    begin with HTTP_X_OPENPLANS.  If those headers are not
-    signed with the secret (or the signature is bad), they
-    are removed.  If they are signed, the signature
-    is stripped, leaving the bare value.
+    This middleware checks signatures using check_environ_signatures.
     """
     def __init__(self, app, secret):
         self.app = app

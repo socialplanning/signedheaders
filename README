@@ -1,0 +1,13 @@
+This library allows trusted communication among HTTP and WSGI
+applications that share a secret.
+
+The add_signed_header function adds a header to a WSGI environment
+which is signed with the shared secret.
+
+The check_environ_signatures function searches the environment for
+HTTP headers which end with _SIGNED.  If those headers are not signed
+with the secret (or the signature is bad), they are removed.  If they
+are signed, the signature is stripped, leaving the bare value.
+
+This library requires that all applications have a (roughly)
+synchronized clock.
