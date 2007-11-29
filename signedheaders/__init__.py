@@ -27,9 +27,16 @@ def check_environ_signatures(environ, secret):
         #if it's signed
         if k.endswith("_SIGNED"):
             del environ[k]
-            decoded = v.split(" ", 5)
-            sendtime, nonce, key, authenticator, value = decoded
-            if time.time() - int(sendtime) > 60:
+            try:
+                decoded = v.split(" ", 5)
+                sendtime, nonce, key, authenticator, value = decoded
+                sendtime_int = int(sendtime)
+            except ValueError:
+                _add_warning(environ, "bogus header")
+                warning("bogus header in %s: %s" % (k, v))
+                continue #bad header
+
+            if time.time() - sendtime_int > 60:
                 #the message has expired
                 _add_warning(environ, "expired header")
                 warning("expired header in %s: %s" % (k, v))
@@ -64,6 +71,7 @@ def add_signed_header(environ, key, value, secret):
     The header is signed with a secret."""
     assert " " not in key
     header = "HTTP_" + key.replace("-", "_").upper() + "_SIGNED"
+    assert header not in environ
     sendtime = str(int(time.time()))
     nonce = os.urandom(18).encode("base64").strip()
     message = "\0".join ([sendtime, nonce, key, value])

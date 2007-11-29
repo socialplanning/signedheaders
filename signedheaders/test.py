@@ -19,3 +19,7 @@ def test_header_signing():
     badval = " ".join([sendtime, nonce, 'REMOTE_USER', "abadauthenticator", 'ausername'])
     environ['HTTP_REMOTE_USER_SIGNED'] = badval
     assert middleware(environ, None) != ['ausername']
+
+    #try a bogus header
+    environ['HTTP_REMOTE_USER_SIGNED'] = "morx"
+    assert middleware(environ, None) != ['ausername']
