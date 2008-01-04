@@ -6,6 +6,16 @@ import re
 
 from logging import warning
 
+def _get_secret(conf):
+    try:
+        secret_filename = conf['topp_secret_filename']
+    except KeyError:
+        return '' #no secret, so all auth will fail
+    f = open(secret_filename)
+    secret = f.readline().strip()
+    f.close()
+    return secret
+
 def _add_warning(environ, warning):
     #quote warning
     warning = warning.replace("\\", "\\\\")
@@ -56,9 +66,9 @@ class HeaderSignatureCheckingMiddleware:
     """
     This middleware checks signatures using check_environ_signatures.
     """
-    def __init__(self, app, secret):
+    def __init__(self, app, app_conf):
         self.app = app
-        self.secret = secret
+        self.secret = _get_secret(app_conf)
 
     def __call__(self, environ, start_response):
         new_environ = dict(environ)

@@ -1,5 +1,5 @@
 from signedheaders import add_signed_header, HeaderSignatureCheckingMiddleware
-
+import os
 
 def test_header_signing():
     environ = {'morx' : 'fleem'}
@@ -12,7 +12,9 @@ def test_header_signing():
     assert key == 'REMOTE_USER'
 
     app = lambda environ, start_response: [environ.get('REMOTE_USER', 'no user')]
-    middleware = HeaderSignatureCheckingMiddleware(app, 'secret')
+
+    fname = os.path.join(os.path.dirname(__file__), 'secret.txt')
+    middleware = HeaderSignatureCheckingMiddleware(app, {'topp_secret_filename' : fname})
     assert middleware(environ, None) == ['ausername']
 
     #now check a bad signature
