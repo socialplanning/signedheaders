@@ -81,7 +81,6 @@ def add_signed_header(environ, key, value, secret):
     The header is signed with a secret."""
     assert " " not in key
     header = "HTTP_" + key.replace("-", "_").upper() + "_SIGNED"
-    assert header not in environ
     sendtime = str(int(time.time()))
     nonce = os.urandom(18).encode("base64").strip()
     message = "\0".join ([sendtime, nonce, key, value])
