@@ -46,7 +46,7 @@ def check_environ_signatures(environ, secret):
                 warning("bogus header in %s: %s" % (k, v))
                 continue #bad header
 
-            if time.time() - sendtime_int > 60:
+            if time.time() - sendtime_int > 180:
                 #the message has expired
                 _add_warning(environ, "expired header")
                 warning("expired header in %s: %s" % (k, v))
